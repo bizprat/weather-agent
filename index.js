@@ -15,14 +15,13 @@ app.get('/', (req, res) => {
 app.post('/generate', async (req, res) => {
   const { prompt, thread_id } = req.body;
 
-  console.log('prompt', prompt);
-
   const result = await agent.invoke(
     {
       messages: [
         {
           role: 'system',
-          content: 'You are an weather assistant.',
+          content:
+            'You are an weather assistant who also runs javascript codes.',
         },
         {
           role: 'user',
@@ -37,11 +36,9 @@ app.post('/generate', async (req, res) => {
     }
   );
 
-  res.json({
-    message:
-      result.messages.at(-1)?.content ||
-      'AI did not respond.',
-  });
+  res.send(
+    result.messages.at(-1)?.content || 'AI did not respond.'
+  );
 });
 
 app.listen(port, () => {

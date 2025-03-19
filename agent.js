@@ -9,6 +9,32 @@ import { tool } from '@langchain/core/tools';
 import axios from 'axios';
 import { MemorySaver } from '@langchain/langgraph';
 
+async function evalAndCaptureOutput(code) {
+  const oldLog = console.log;
+  const oldError = console.error;
+
+  const output = [];
+  let errorOutput = [];
+
+  console.log = (...args) => output.push(args.join(' '));
+  console.error = (...args) =>
+    errorOutput.push(args.join(' '));
+
+  try {
+    await eval(code);
+  } catch (error) {
+    errorOutput.push(error.message);
+  }
+
+  console.log = oldLog;
+  console.error = oldError;
+
+  return {
+    stdout: output.join('\n'),
+    stderr: errorOutput.join('\n'),
+  };
+}
+
 const weatherTool = tool(
   async ({ latitude, longitude }) => {
     let weather;
@@ -81,6 +107,27 @@ const geocodeTool = tool(
   }
 );
 
+const jsCodeExecuter = tool(
+  async ({ code }) => {
+    console.log('JS code:', code);
+
+    const result = await evalAndCaptureOutput(code);
+
+    console.log('===========');
+    console.log('JS Result:', result);
+    console.log('===========');
+
+    return result;
+  },
+  {
+    name: 'jsCodeExecuter',
+    description: 'Runs javascript code',
+    schema: z.object({
+      code: z.string().describe('Code to run'),
+    }),
+  }
+);
+
 const model = new ChatOpenAI({
   model: 'gpt-4o',
 });
@@ -89,6 +136,6 @@ const checkpointSaver = new MemorySaver();
 
 export const agent = createReactAgent({
   llm: model,
-  tools: [weatherTool, geocodeTool],
+  tools: [weatherTool, geocodeTool, jsCodeExecuter],
   checkpointSaver,
 });
